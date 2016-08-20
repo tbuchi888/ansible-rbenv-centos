@@ -1,0 +1,97 @@
+---
+- hosts: all
+  gather_facts: no
+  become: yes
+  vars:
+    ruby_ver: 2.2.3
+  tasks:
+    - name: check install rbenv by which command
+      shell: source ~/.bash_profile; which rbenv
+      register: rbenv_install
+      failed_when: rbenv_install.rc == 0
+
+    - block:
+        - debug: msg="---------- block start ----------"
+        - name: yum install
+          yum:
+            name:  '{{ item.name }}'
+            state: '{{ item.state }}'
+          register: RESULT
+          with_items:
+            - name: gcc
+              state: latest
+            - name: zlib-devel
+              state: latest
+            - name: openssl-devel
+              state: latest
+            - name: mysql-server
+              state: latest
+            - name: mysql-devel
+              state: latest
+            - name: libffi-devel
+              state: latest
+            - name: libxml2-devel
+              state: latest
+            - name: libxslt-devel
+              state: latest
+            - name: httpd-devel
+              state: latest
+            - name: curl-devel
+              state: latest
+            - name: apr-devel
+              state: latest
+            - name: apr-util-devel
+              state: latest
+            - name: readline-devel
+              state: latest
+            - name: ImageMagick
+              state: latest
+            - name: ImageMagick-devel
+              state: latest
+            - name: git
+              state: latest
+            - name: rubygems
+              state: latest
+        - name: results
+          debug: var=RESULT.results
+
+        - name: git clone rbenv,ruby-build
+          git:
+            repo: '{{ item.repo }}'
+            dest: '{{ item.dest }}'
+          register: RESULT
+          with_items:
+            - repo: https://github.com/sstephenson/rbenv.git
+              dest: ~/.rbenv
+            - repo: https://github.com/sstephenson/ruby-build.git
+              dest: ~/.rbenv/plugins/ruby-build
+        - name: results
+          debug: var=RESULT.results
+
+        - name: install rbenv and ruby
+          shell: '{{ item.cmd }}'
+          register: RESULT
+          with_items:
+            - cmd: echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bash_profile
+            - cmd: echo 'eval "$(rbenv init -)"' >> ~/.bash_profile
+            - cmd: source ~/.bash_profile; rbenv -v
+            - cmd: source ~/.bash_profile; rbenv install '{{ ruby_ver }}'
+            - cmd: source ~/.bash_profile; rbenv rehash
+            - cmd: source ~/.bash_profile; rbenv global '{{ ruby_ver }}'
+            - cmd: source ~/.bash_profile; rbenv rehash
+            - cmd: source ~/.bash_profile; ruby -v
+        - name: results
+          debug: var=RESULT.results
+
+#  Please remove the following comment '#' when you want to do, for example, `gem install Serverspec` using rbenv.
+#        - name: install serverspec and ansiblespec
+#          shell: '{{ item.cmd }}'
+#          register: RESULT
+#          with_items:
+#            - cmd: source ~/.bash_profile; gem install serverspec
+#            - cmd: source ~/.bash_profile; gem install ansible_spec
+#        - name: results
+#          debug: var=RESULT.results
+
+        - debug: msg="---------- block end   ----------"
+      when: rbenv_install.rc == 1
